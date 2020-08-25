@@ -1,0 +1,6 @@
+*.pyc
+*.sh
+dataset/
+results/
+
+!build.sh
