@@ -1,11 +1,13 @@
 # BytePS Examples
 
-This repo contains several examples to run BytePS, including popular CV/NLP models implemented in TensorFlow/PyTorch/MXNet.
+This repo contains several examples to run [BytePS](https://github.com/bytedance/byteps/), including popular CV/NLP models implemented in TensorFlow/PyTorch/MXNet.
 
 
 ## Usage
 
-A `run.sh` is provided for each example to demonstrate the basic usage. It does not set up the necessary enviroment variables needed by BytePS. Therefore, before you run these examples, we recommend you read [this tutorial](https://github.com/bytedance/byteps/blob/master/docs/step-by-step-tutorial.md) for detailed guidelines on launching BytePS. Usually it will be easier to get started on a simple example with small number of GPUs.
+You should [install BytePS](https://github.com/bytedance/byteps/#quick-start) before anything else. 
+
+A `run.sh` is provided for each example to demonstrate the basic usage. It does not set up the necessary enviroment variables needed by BytePS. Therefore, before you run these examples, we recommend you read [this tutorial](https://github.com/bytedance/byteps/blob/master/docs/step-by-step-tutorial.md) for detailed guidelines on launching BytePS. Usually it will be easier to get started on the simple example in that tutorial, and then try more complicated examples in this repo.
 
 We also provide options to switch to Horovod for performance comparison. To do so, you should change `bpslaunch` to MPI-based command (see [Horovod tutorial](https://github.com/horovod/horovod#running-horovod)), and then change the value of related environment variable (usually `DISTRIBUTED_FRAMEWORK`) or python trailing argument as noted in each `run.sh`.
 
