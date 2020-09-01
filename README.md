@@ -1,7 +1,6 @@
 # BytePS Examples
 
-This repo contains several examples to run [BytePS](https://github.com/bytedance/byteps/), including popular CV/NLP models implemented in TensorFlow/PyTorch/MXNet.
-
+This repo contains several examples to run [BytePS](https://github.com/bytedance/byteps/), including popular CV/NLP models implemented in TensorFlow/PyTorch/MXNet. You can use them to reproduce the end-to-end evaluation results in the [OSDI'20 paper](https://www.usenix.org/conference/osdi20/presentation/jiang) of BytePS.
 
 ## Usage
 
