@@ -6,7 +6,7 @@
 export ROOT_DIR=${ROOT_DIR:-~/gpt2}
 export TRAIN_FILE=${TRAIN_FILE:-$ROOT_DIR/wikitext-2-raw/wiki.train.raw}
 export TEST_FILE=${TRAIN_FILE:-$ROOT_DIR/wikitext-2-raw/wiki.test.raw}
-export DISTRIBUTED_FRAMEWORK={DISTRIBUTED_FRAMEWORK:-byteps}
+export DISTRIBUTED_FRAMEWORK=${DISTRIBUTED_FRAMEWORK:-byteps}
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
