@@ -7,10 +7,25 @@ from utils import *
 from glob import glob
 from collections import OrderedDict
 
-if os.getenv("DISTRIBUTED_FRAMEWORK") == "byteps":
+dist_framework = os.getenv("DISTRIBUTED_FRAMEWORK", "").lower()
+if dist_framework == "byteps":
     import byteps.torch as bps
-else:
+elif dist_framework == "horovod":
     import horovod.torch as bps
+else:
+    import torch.distributed as bps
+    def local_rank():
+        return int(os.getenv("LOCAL_RANK", "-1"))
+    def local_size():
+        return int(os.getenv("LOCAL_WORLD_SIZE", "-1"))
+    def rank():
+        return bps.get_rank()
+    def size():
+        return bps.get_world_size()
+    bps.local_rank = local_rank
+    bps.local_size = local_size
+    bps.rank = rank
+    bps.size = size
 
 class UGATIT(object) :
     def __init__(self, args):
@@ -150,26 +165,27 @@ class UGATIT(object) :
         self.MSE_loss = nn.MSELoss().to(self.device)
         self.BCE_loss = nn.BCEWithLogitsLoss().to(self.device)
         
-        gen_named_parameters = []
-        dis_named_parameters = []
-        for n, p in (list(self.genA2B.named_parameters(prefix='genA2B')) + 
-                     list(self.genB2A.named_parameters(prefix='genB2A'))):
-            gen_named_parameters.append((n, p))
-        for n, p in (list(self.disGA.named_parameters(prefix='disGA')) + 
-                     list(self.disGB.named_parameters(prefix='disGB')) + 
-                     list(self.disLA.named_parameters(prefix='disLA')) + 
-                     list(self.disLB.named_parameters(prefix='disLB'))):
-            dis_named_parameters.append((n, p))
+        if dist_framework != "torch_native":
+            gen_named_parameters = []
+            dis_named_parameters = []
+            for n, p in (list(self.genA2B.named_parameters(prefix='genA2B')) + 
+                         list(self.genB2A.named_parameters(prefix='genB2A'))):
+                gen_named_parameters.append((n, p))
+            for n, p in (list(self.disGA.named_parameters(prefix='disGA')) + 
+                         list(self.disGB.named_parameters(prefix='disGB')) + 
+                         list(self.disLA.named_parameters(prefix='disLA')) + 
+                         list(self.disLB.named_parameters(prefix='disLB'))):
+                dis_named_parameters.append((n, p))
 
-        gen_state_dict = OrderedDict([("genA2B."+k, v) for k, v in self.genA2B.state_dict().items()] + 
-                                     [("genB2A."+k, v) for k, v in self.genB2A.state_dict().items()])
-        dis_state_dict = OrderedDict([("disGA."+k, v) for k, v in self.disGA.state_dict().items()] + 
-                                     [("disGB."+k, v) for k, v in self.disGB.state_dict().items()] + 
-                                     [("disLA."+k, v) for k, v in self.disLA.state_dict().items()] + 
-                                     [("disLB."+k, v) for k, v in self.disLB.state_dict().items()])
+            gen_state_dict = OrderedDict([("genA2B."+k, v) for k, v in self.genA2B.state_dict().items()] + 
+                                         [("genB2A."+k, v) for k, v in self.genB2A.state_dict().items()])
+            dis_state_dict = OrderedDict([("disGA."+k, v) for k, v in self.disGA.state_dict().items()] + 
+                                         [("disGB."+k, v) for k, v in self.disGB.state_dict().items()] + 
+                                         [("disLA."+k, v) for k, v in self.disLA.state_dict().items()] + 
+                                         [("disLB."+k, v) for k, v in self.disLB.state_dict().items()])
         
-        bps.broadcast_parameters(gen_state_dict, root_rank=0)
-        bps.broadcast_parameters(dis_state_dict, root_rank=0)
+            bps.broadcast_parameters(gen_state_dict, root_rank=0)
+            bps.broadcast_parameters(dis_state_dict, root_rank=0)
 
         """ Trainer """
         self.G_optim = torch.optim.Adam(itertools.chain(self.genA2B.parameters(), self.genB2A.parameters()), 
@@ -187,16 +203,17 @@ class UGATIT(object) :
         for n, p in list(self.genB2A.named_parameters()):
             named_parameters.append(("genB2A." + n, p))
 
-        self.G_optim = bps.DistributedOptimizer(self.G_optim,
-                                named_parameters=gen_named_parameters,
-                                compression=bps.Compression.none)
+        if dist_framework != "torch_native":
+            self.G_optim = bps.DistributedOptimizer(self.G_optim,
+                                    named_parameters=gen_named_parameters,
+                                    compression=bps.Compression.none)
 
-        self.D_optim = bps.DistributedOptimizer(self.D_optim,
-                                named_parameters=dis_named_parameters,
-                                compression=bps.Compression.none)
+            self.D_optim = bps.DistributedOptimizer(self.D_optim,
+                                    named_parameters=dis_named_parameters,
+                                    compression=bps.Compression.none)
 
-        self.G_optim._handles.clear()
-        self.D_optim._handles.clear()
+            self.G_optim._handles.clear()
+            self.D_optim._handles.clear()
 
         """ Define Rho clipper to constraint the value of rho in AdaILN and ILN"""
         self.Rho_clipper = RhoClipper(0, 1)
@@ -240,10 +257,11 @@ class UGATIT(object) :
             real_A, real_B = real_A.to(self.device), real_B.to(self.device)
 
             # Update D
-            self.D_optim._handles.clear()
+            if dist_framework != "torch_native":
+                self.D_optim._handles.clear()
+                self.D_optim.set_backward_passes_per_step(1)
+                self.G_optim.set_backward_passes_per_step(10)
             self.D_optim.zero_grad()
-            self.D_optim.set_backward_passes_per_step(1)
-            self.G_optim.set_backward_passes_per_step(10)
 
             fake_A2B, _, _ = self.genA2B(real_A)
             fake_B2A, _, _ = self.genB2A(real_B)
@@ -275,10 +293,11 @@ class UGATIT(object) :
             self.D_optim.step()
 
             # Update G
-            self.G_optim._handles.clear()
+            if dist_framework != "torch_native":
+                self.G_optim._handles.clear()
+                self.D_optim.set_backward_passes_per_step(10)
+                self.G_optim.set_backward_passes_per_step(1)
             self.G_optim.zero_grad()
-            self.D_optim.set_backward_passes_per_step(10)
-            self.G_optim.set_backward_passes_per_step(1)
 
             fake_A2B, fake_A2B_cam_logit, _ = self.genA2B(real_A)
             fake_B2A, fake_B2A_cam_logit, _ = self.genB2A(real_B)
