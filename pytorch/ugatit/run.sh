@@ -17,7 +17,7 @@ fi
 export DISTRIBUTED_FRAMEWORK=${DISTRIBUTED_FRAMEWORK:-byteps}
 
 if [[ "$DISTRIBUTED_FRAMEWORK" == "byteps" ]]; then
-  bpslaunch python3 ${this_dir}/ugatit/main.py $@
+  bytepsrun python3 ${this_dir}/ugatit/main.py $@
 elif [[ "$DISTRIBUTED_FRAMEWORK" == "horovod" ]]; then
   python3 ${this_dir}/ugatit/main.py $@
 elif [[ "$DISTRIBUTED_FRAMEWORK" == "torch_native" ]]; then
