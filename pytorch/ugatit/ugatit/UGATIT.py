@@ -271,10 +271,10 @@ class UGATIT(object) :
             real_GB_logit, real_GB_cam_logit, _ = self.disGB(real_B)
             real_LB_logit, real_LB_cam_logit, _ = self.disLB(real_B)
 
-            fake_GA_logit, fake_GA_cam_logit, _ = self.disGA(fake_B2A)
-            fake_LA_logit, fake_LA_cam_logit, _ = self.disLA(fake_B2A)
-            fake_GB_logit, fake_GB_cam_logit, _ = self.disGB(fake_A2B)
-            fake_LB_logit, fake_LB_cam_logit, _ = self.disLB(fake_A2B)
+            fake_GA_logit, fake_GA_cam_logit, _ = self.disGA(fake_B2A.detach())
+            fake_LA_logit, fake_LA_cam_logit, _ = self.disLA(fake_B2A.detach())
+            fake_GB_logit, fake_GB_cam_logit, _ = self.disGB(fake_A2B.detach())
+            fake_LB_logit, fake_LB_cam_logit, _ = self.disLB(fake_A2B.detach())
 
             D_ad_loss_GA = self.MSE_loss(real_GA_logit, torch.ones_like(real_GA_logit).to(self.device)) + self.MSE_loss(fake_GA_logit, torch.zeros_like(fake_GA_logit).to(self.device))
             D_ad_cam_loss_GA = self.MSE_loss(real_GA_cam_logit, torch.ones_like(real_GA_cam_logit).to(self.device)) + self.MSE_loss(fake_GA_cam_logit, torch.zeros_like(fake_GA_cam_logit).to(self.device))
@@ -307,11 +307,11 @@ class UGATIT(object) :
 
             fake_A2A, fake_A2A_cam_logit, _ = self.genB2A(real_A)
             fake_B2B, fake_B2B_cam_logit, _ = self.genA2B(real_B)
-
-            fake_GA_logit, fake_GA_cam_logit, _ = self.disGA(fake_B2A)
-            fake_LA_logit, fake_LA_cam_logit, _ = self.disLA(fake_B2A)
-            fake_GB_logit, fake_GB_cam_logit, _ = self.disGB(fake_A2B)
-            fake_LB_logit, fake_LB_cam_logit, _ = self.disLB(fake_A2B)
+            with torch.no_grad():
+                fake_GA_logit, fake_GA_cam_logit, _ = self.disGA(fake_B2A)
+                fake_LA_logit, fake_LA_cam_logit, _ = self.disLA(fake_B2A)
+                fake_GB_logit, fake_GB_cam_logit, _ = self.disGB(fake_A2B)
+                fake_LB_logit, fake_LB_cam_logit, _ = self.disLB(fake_A2B)
 
             G_ad_loss_GA = self.MSE_loss(fake_GA_logit, torch.ones_like(fake_GA_logit).to(self.device))
             G_ad_cam_loss_GA = self.MSE_loss(fake_GA_cam_logit, torch.ones_like(fake_GA_cam_logit).to(self.device))

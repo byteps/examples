@@ -9,7 +9,7 @@ SHOULD_DOWNLOAD_DATASET=${SHOULD_DOWNLOAD_DATASET:-1}
 OMPI_COMM_WORLD_LOCAL_RANK=${OMPI_COMM_WORLD_LOCAL_RANK:-0}
 if [[ "$SHOULD_DOWNLOAD_DATASET" == "1" ]] && [[ "$OMPI_COMM_WORLD_LOCAL_RANK" == "0" ]]; then
   cd
-  wget https://byteps.tos-cn-qingdao.volces.com/datasets/selfie2anime.zip
+  [[ -f ./selfie2anime.zip ]] || wget -nv https://byteps.tos-cn-qingdao.volces.com/datasets/selfie2anime.zip
   unzip -qn ./selfie2anime.zip -d selfie2anime
   cd -
 fi
