@@ -14,6 +14,8 @@ elif dist_framework == "horovod":
     import horovod.torch as bps
 else:
     import torch.distributed as bps
+    from torch.nn.parallel import DistributedDataParallel as DDP
+
     def local_rank():
         return int(os.getenv("LOCAL_RANK", "-1"))
     def local_size():
@@ -159,6 +161,14 @@ class UGATIT(object) :
         self.disGB = Discriminator(input_nc=3, ndf=self.ch, n_layers=7).to(self.device)
         self.disLA = Discriminator(input_nc=3, ndf=self.ch, n_layers=5).to(self.device)
         self.disLB = Discriminator(input_nc=3, ndf=self.ch, n_layers=5).to(self.device)
+
+        if dist_framework == "torch_native":
+            self.genA2B = DDP(self.genA2B, device_ids=[bps.local_rank()])
+            self.genB2A = DDP(self.genB2A, device_ids=[bps.local_rank()])
+            self.disGA = DDP(self.disGA, device_ids=[bps.local_rank()])
+            self.disGB = DDP(self.disGB, device_ids=[bps.local_rank()])
+            self.disLA = DDP(self.disLA, device_ids=[bps.local_rank()])
+            self.disLB = DDP(self.disLB, device_ids=[bps.local_rank()])
 
         """ Define Loss """
         self.L1_loss = nn.L1Loss().to(self.device)
