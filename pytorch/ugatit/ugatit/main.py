@@ -2,10 +2,31 @@ from UGATIT import UGATIT
 import argparse
 from utils import *
 
-if os.getenv("DISTRIBUTED_FRAMEWORK") == "byteps":
+dist_framework = os.getenv("DISTRIBUTED_FRAMEWORK", "").lower()
+if dist_framework == "byteps":
     import byteps.torch as bps
-else:
+elif dist_framework == "horovod":
     import horovod.torch as bps
+else:
+    import torch.distributed as bps
+    def local_rank():
+        return int(os.getenv("LOCAL_RANK", "-1"))
+    def local_size():
+        return int(os.getenv("LOCAL_WORLD_SIZE", "-1"))
+    def rank():
+        return bps.get_rank()
+    def size():
+        return bps.get_world_size()
+    def init():
+        bps.init_process_group(backend="nccl")
+        return None
+
+    bps.local_rank = local_rank
+    bps.local_size = local_size
+    bps.rank = rank
+    bps.size = size
+    bps.init = init
+
 
 """parsing and configuration"""
 
@@ -15,7 +36,7 @@ def parse_args():
     parser.add_argument('--phase', type=str, default='train', help='[train / test]')
     parser.add_argument('--light', type=str2bool, default=False, help='[U-GAT-IT full version / U-GAT-IT light version]')
     parser.add_argument('--dataset_dir', type=str, default='dataset', help='dataset dir path')
-    parser.add_argument('--dataset', type=str, default='YOUR_D:ATASET_NAME', help='dataset_name')
+    parser.add_argument('--dataset', type=str, default='YOUR_DATASET_NAME', help='dataset_name')
 
     parser.add_argument('--iteration', type=int, default=1000000, help='The number of training iterations')
     parser.add_argument('--batch_size', type=int, default=1, help='The size of batch size')
@@ -72,6 +93,7 @@ def main():
     bps.init()
     torch.manual_seed(1)
     torch.cuda.manual_seed(1)
+    print(f'xxxx bps.local_rank() {bps.local_rank()}', flush=True)
     torch.cuda.set_device(bps.local_rank())
     # parse arguments
     args = parse_args()
